@@ -1,0 +1,8 @@
+# Use config from config file or program default [True, False]
+SETTINGS=Config
+MASK=True
+WINDOW_SIZE=None
+HOK_POSITION=None
+SCAN_DIRECTION=up
+SPEED=None
+FILE_SAVE=True

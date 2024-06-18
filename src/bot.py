@@ -6,8 +6,7 @@ from datetime import datetime
 
 import keyboard  # pip install keyboard
 import win32gui
-from PIL import ImageGrab  # pip install Pillow
-from PIL import ImageOps
+from PIL import ImageGrab, ImageOps, Image  # pip install Pillow
 
 
 
@@ -32,7 +31,7 @@ def compare(i1, i2):
     h2 = i2.histogram()
     rms = math.sqrt(reduce(operator.add,
                            map(lambda a, b: (a - b) ** 2, h1, h2)) / len(h1))
-    return rms
+    return round(rms, 2)
 
 
 def write_to_file(file_name, line):
@@ -51,10 +50,20 @@ def find_too_many(found_players):
     return True
 
 
+def crop_screenshot(rect, cropbox, black_bg_img, mask_img):
+    raw_img = ImageGrab.grab(bbox=(rect[0], rect[1], rect[2], rect[3]))  # Take whole screenshot
+    #raw_img.save("raw_img_debug.png")
+    crop_img = ImageOps.crop(raw_img, cropbox)  # Crop data from it (right up corner)
+    #crop_img.save("crop_img_debug.png")
+    masked_img = Image.composite(crop_img, black_bg_img, mask_img)  # Mask data (timer, guild chat, xp bar)
+    #masked_img.save("masked_img_debug.png")
+    return masked_img
+
+
 def main():
 
     # intro talk
-    version = "1.1"
+    version = "1.2"
     print("Welvome to SFGame-ScrapbookBot v" + version)
     print("\t\t\t-by G3S")
     print()
@@ -65,21 +74,28 @@ def main():
     if len(appwindows) == 0:  # SFGame app not found
         rect = [0, 0, 1928, 1048]
         leftcrop = 1150
-        botcrop = 400
+        topcrop = 35
+        rightcrop = 50
+        botcrop = 450
     else:
         shakes = appwindows[0][0]
-
         # set the Game Window as the active window
         win32gui.SetForegroundWindow(shakes)
-
         # store the coordinates which we use later to find and crop the images
         rect = win32gui.GetWindowRect(shakes)
         leftcrop = int(rect[2] / 1.68)
-        botcrop = int(rect[3] / 2.62)
+        topcrop = int(rect[3] / 29.94)
+        rightcrop = int(rect[2] / 38.56)
+        botcrop = int(rect[3] / 2.49)
+    cropbox = (leftcrop, topcrop, rightcrop, botcrop)
+    init_raw_img = ImageGrab.grab(bbox=(rect[0], rect[1], rect[2], rect[3]))
+    init_crop_img = ImageOps.crop(init_raw_img, cropbox)
+    black_bg_img = Image.open("black.png").resize(init_crop_img.size)
+    mask_img = Image.open('mask.png').convert("L").resize(init_crop_img.size)
 
     # init
-    pos_hof = int(input("Hall of Fame start position\t: "))
-    scan_dir = input("Scan direction, UP = 0 | DOWN = 1\t: ")
+    pos_hof = int(input("Hall of Fame start position\t\t: "))
+    scan_dir = input("Scan direction [UP↑ = 0 | DOWN↓ = 1]\t: ")
     found_players = []
 
     act_scan = 0
@@ -100,7 +116,7 @@ def main():
 
     print(f"\nClick into game to player on HoF position {pos_hof} in next 5 seconds!")
     sleep(5)
-    print("Bot started!\n")
+    print("\nBot started!")
 
     while pos_hof > 1 and act_scan < max_scan:
         # Exit program
@@ -110,9 +126,7 @@ def main():
         sleep(0.2)
 
         images = []
-        new_image_raw = ImageGrab.grab(bbox=(rect[0], rect[1], rect[2], rect[3]))
-        new_image_crop = ImageOps.crop(new_image_raw, (leftcrop, 0, 0, botcrop))
-        #new_image_crop.save(f"crop_tmp_img_act_scan.png")
+        new_image_crop = crop_screenshot(rect, cropbox, black_bg_img, mask_img)
 
         # Player is not refreshed
         if old_image is not None and compare(old_image, new_image_crop) < 50.0:    
@@ -122,8 +136,7 @@ def main():
                 sleep(0.175)
                 keyboard.press_and_release("up")
             sleep(0.4)
-            new_image_raw = ImageGrab.grab(bbox=(rect[0], rect[1], rect[2], rect[3]))
-            new_image_crop = ImageOps.crop(new_image_raw, (leftcrop, 0, 0, botcrop))
+            new_image_crop = crop_screenshot(rect, cropbox, black_bg_img, mask_img)
 
         old_image = new_image_crop
         images.append(new_image_crop)
@@ -132,8 +145,7 @@ def main():
 
         for k in range(3):
             sleep(0.15)
-            new_image_raw = ImageGrab.grab(bbox=(rect[0], rect[1], rect[2], rect[3]))
-            new_image_crop = ImageOps.crop(new_image_raw, (leftcrop, 0, 0, botcrop))
+            new_image_crop = crop_screenshot(rect, cropbox, black_bg_img, mask_img)
             images.append(new_image_crop)
             sleep(0.15)
 
@@ -148,9 +160,9 @@ def main():
                 break
 
         # compute the difference and print it to the console
-        print(f"Pos: {pos_hof}\tDiff: {max_diff}\tFound: {found_players}")
         if act_scan % 100 == 0:
-            print("\tpress 'q' or 'esc' to exit program")
+            print("\n\tpress and hold 'q', 'z' or 'esc' to exit program\n")
+        print(f"Pos: {pos_hof}\tDiff: {max_diff}\tFound: {found_players}")
 
         # if the Images are different enough the loop will break since the Bot expects to have found an unknown item
         # if the Images are the same the bot will increment its counter and go up to the next player
