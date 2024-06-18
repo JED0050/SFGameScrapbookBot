@@ -3,10 +3,154 @@ import operator
 from functools import reduce
 from time import sleep
 from datetime import datetime
+import logging
+import numbers
 
+from PIL import ImageGrab, ImageOps, Image  # pip install Pillow
 import keyboard  # pip install keyboard
 import win32gui
-from PIL import ImageGrab, ImageOps, Image  # pip install Pillow
+
+
+
+class Config:
+
+    def __init__(self, file_name, logger):
+        self.config_dict = {}
+        self._set_default_values()
+
+        
+        with open(file_name, "r") as f:
+            for line in f:
+                line = line.replace(" ", "")[:-1]
+                if line.startswith("#") or len(line) < 3:
+                    continue
+                line_split = line.split("=")
+                if len(line_split) != 2:
+                    continue
+                key = line_split[0].upper()
+                value = line_split[1].upper()
+                value = self._parse_value(value)
+                self.config_dict[key] = value
+                if self.config_dict["SETTINGS"] == False:
+                    return
+
+        self._set_file_values()
+
+        logger.disabled = True if self.config_dict["DEBUG_ON"] is False else False
+        logger.debug("CONFIG FILE DONE")
+        logger.debug(f"MASK={self.MASK}")
+        logger.debug(f"WINDOW_SIZE={self.WINDOW_SIZE}")
+        logger.debug(f"HOF_POSITION={self.HOF_POSITION}")
+        logger.debug(f"SCAN_DIRECTION_UP={self.SCAN_DIRECTION_UP}")
+        logger.debug(f"FILE_SAVE={self.FILE_SAVE}")
+        logger.debug(f"SPEED={self.SPEED}")
+        logger.debug(f"SCAN_LIMIT={self.SCAN_LIMIT}")
+        logger.debug(f"DIFF_LIMIT={self.DIFF_LIMIT}")
+
+
+    def _set_default_values(self):
+        self.MASK = True
+        self.WINDOW_SIZE = None
+        self.HOF_POSITION = None
+        self.SCAN_DIRECTION_UP = None
+        self.FILE_SAVE = True
+        self.SPEED = 1
+        self.SCAN_LIMIT = 5000
+        self.DIFF_LIMIT = 3.0
+
+        self.config_dict["SETTINGS"] = None
+        self.config_dict["MASK"] = None
+        self.config_dict["WINDOW_SIZE"] = None
+        self.config_dict["HOF_POSITION"] = None
+        self.config_dict["SCAN_DIRECTION_UP"] = None
+        self.config_dict["FILE_SAVE"] = None
+        self.config_dict["SPEED"] = None
+        self.config_dict["DEBUG_ON"] = True  # False
+        self.config_dict["SCAN_LIMIT"] = None
+        self.config_dict["DIFF_LIMIT"] = None
+
+
+    def _parse_value(self, value):
+        if len(value) == 0 or value == "NONE" or value == None:
+            return None
+        elif value == "TRUE":
+            return True
+        elif value == "FALSE":
+            return False
+        elif self._is_number(value):
+            return float(value)
+        elif self._is_tuple(value):
+            tmp_tuple = str(value)[1:-1]
+            tmp_list = tmp_tuple.split(",")
+            return (int(tmp_list[0]),int(tmp_list[1]))
+        else:
+            return None
+
+
+    def _is_number(self, value):
+        if value is None:
+            return False
+        try:
+            float(value)
+            return True
+        except:
+            return False
+
+
+    def _is_tuple(self, value):
+        if value is None:
+            return False
+        value = str(value)
+        if not value.startswith("("):
+            return False
+        if not value.endswith(")"):
+            return False
+        value = value[1:-1]
+        tmp_tuple = value.split(",")
+        if len(tmp_tuple) != 2:
+            return False
+        if not self._is_number(tmp_tuple[0]) or not self._is_number(tmp_tuple[1]):
+            return False
+        return True
+
+
+    def _set_file_values(self):
+        if isinstance(self.config_dict["MASK"], bool):
+            self.MASK = self.config_dict["MASK"]
+        if isinstance(self.config_dict["WINDOW_SIZE"], tuple):
+            self.WINDOW_SIZE = self.config_dict["WINDOW_SIZE"]
+        if isinstance(self.config_dict["HOF_POSITION"], float):
+            number = int(self.config_dict["HOF_POSITION"])
+            if number < 0:
+                self.HOF_POSITION = None
+            if number > 1000000000:
+                number = 1000000000
+            self.HOF_POSITION = number
+        if isinstance(self.config_dict["SCAN_DIRECTION_UP"], bool):
+            self.SCAN_DIRECTION_UP = self.config_dict["SCAN_DIRECTION_UP"]
+        if isinstance(self.config_dict["FILE_SAVE"], bool):
+            self.FILE_SAVE = self.config_dict["FILE_SAVE"]
+        if isinstance(self.config_dict["SPEED"], float):
+            number = self.config_dict["SPEED"]
+            if number < 0:
+                pass
+            elif number > 10:
+                number = 10
+            self.SPEED = number
+        if isinstance(self.config_dict["SCAN_LIMIT"], float):
+            number = int(self.config_dict["SCAN_LIMIT"])
+            if number < 10:
+                pass
+            if number > 1000000000:
+                number = 1000000000
+            self.SCAN_LIMIT = number
+        if isinstance(self.config_dict["DIFF_LIMIT"], float):
+            number = self.config_dict["DIFF_LIMIT"]
+            if number < 0.1:
+                pass
+            elif number > 1000:
+                number = 1000
+            self.DIFF_LIMIT = number
 
 
 
@@ -62,10 +206,22 @@ def crop_screenshot(rect, cropbox, black_bg_img, mask_img):
 
 def main():
 
+    # logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+    console_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s]: %(message)s'))
+    logger.addHandler(console_handler)
+
+    # config
+    config_file_name = "CONFIG.txt"
+    config = Config(config_file_name, logger)
+
     # intro talk
-    version = "1.2"
+    version = "1.2.2.5"
     print("Welvome to SFGame-ScrapbookBot v" + version)
-    print("\t\t\t-by G3S")
+    print("\t\t\t-by Gaara3San")
     print()
     print("Place your game on main monitor and on fullscreen")
 
@@ -77,6 +233,7 @@ def main():
         topcrop = 35
         rightcrop = 50
         botcrop = 450
+        logger.warning("Steam game not found")
     else:
         shakes = appwindows[0][0]
         # set the Game Window as the active window
@@ -90,8 +247,9 @@ def main():
     cropbox = (leftcrop, topcrop, rightcrop, botcrop)
     init_raw_img = ImageGrab.grab(bbox=(rect[0], rect[1], rect[2], rect[3]))
     init_crop_img = ImageOps.crop(init_raw_img, cropbox)
-    black_bg_img = Image.open("black.png").resize(init_crop_img.size)
     mask_img = Image.open('mask.png').convert("L").resize(init_crop_img.size)
+    black_bg_img = Image.new("RGB", init_crop_img.size, (0, 0, 0))
+    logger.debug(f"Cropbox size: {cropbox}, Screenshot crop size: {init_crop_img.size}")
 
     # init
     pos_hof = int(input("Hall of Fame start position\t\t: "))
