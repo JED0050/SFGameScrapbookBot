@@ -1,3 +1,4 @@
 debug_output/
 src/DEBUG/
 src/bot_output*.txt
+exe/bot_output*.txt

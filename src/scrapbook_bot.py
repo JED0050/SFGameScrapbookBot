@@ -408,12 +408,13 @@ def main():
     logger.debug("Main loop exited")
     if len(found_players) == 0:
         logger.debug("0 players found")
-        print("0 players found :(")
+        print("\n0 players found :(")
     else:
-        logger.debug(f"{len(found_players)} players found")
+        logger.debug(f"\n{len(found_players)} players found")
         print(f"{len(found_players)} players with items to scrapbook found")
         print(f"Player's Hall of Fame positions:{found_players}")
 
+    input("\nPress any key to exit program...")
 
 if __name__ == "__main__":
     main()

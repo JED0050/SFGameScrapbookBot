@@ -1,0 +1,20 @@
+# Use config from config file or program default [True, False] default: True
+SETTINGS=True
+# Mask for removig noice from game (like arena timer) [True, False] default: True
+MASK=True
+# Size of main monitor [(0-10000,0-10000)] default: None
+WINDOW_SIZE=None
+# Starting position in Hall of Fame [1-1000000000] default: None
+HOF_POSITION=None
+# Choose scan direction [True, False] default: True
+SCAN_DIRECTION_UP=True
+# Save positions of found stickers to file [True, False] default: True
+FILE_SAVE=True
+# Speed of scanning (faster for steam, slower for web) [0.1 - 10] default: 1
+SPEED=1
+# Turn on debug log [True, False] default: False
+DEBUG_ON=False
+# Maximum limit of scanned players in HoF [10-1000000000] default: 5000
+SCAN_LIMIT=5000
+# Minimal difference for recognizing new item found [0.1-1000] default: 3.0
+DIFF_LIMIT=3.0
