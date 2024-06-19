@@ -1,8 +1,6 @@
 Euro 24 kolekce
-
-Scan 50 věcí 6000-5184
-Scan 28 věcí 5200-3853
-
+(Scan 50 věcí 6000-5184)
+(Scan 28 věcí 5200-3853)
 
 --- War ---
 Zbraň + Štít: robin69
